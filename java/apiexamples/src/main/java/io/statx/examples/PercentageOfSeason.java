@@ -16,18 +16,19 @@ import io.statx.rest.api.GroupsApi;
 import io.statx.rest.api.StatsApi;
 import io.statx.rest.model.*;
 import org.joda.time.DateTime;
-import org.joda.time.Days;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.DateTimeZone;
 
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Example to show how to update a number stat in StatX.
- * The class updates a number stat with the countdown of the number of days
- * from the current date to a given target date.
+ * Example to show how to update a dialer stat in StatX.
+ * Updates a dialer stat with the percentage days of the current season for the given date (UTC time).
  *
  * Prerequisite: Download the app from the appstore (IOS) or playstore (android) and sign up.
  *
@@ -35,30 +36,30 @@ import java.util.concurrent.TimeUnit;
  * mvn clean compile
  *
  * Call it with maven with:
- * mvn exec:java -Dexec.mainClass="io.statx.examples.CountdownOfNumberOfDays" -Dexec.args="<ClientId>
+ * mvn exec:java -Dexec.mainClass="io.statx.examples.PercentageOfSeason" -Dexec.args="<ClientId>
  *     <Phone Number in international format> <Target Date> <Stat Title>"
- *
  */
-public class CountdownOfNumberOfDays {
-
+public class PercentageOfSeason {
     private static String STATX_REST_V1_URL_PREFIX = "https://api.statx.io/v1";
+    private static String STAT_TITLE_PREFIX = "Percent of %s days";
 
     public static void main(String[] args) throws Exception {
-        if (args.length < 4) {
+        if (args.length < 3) {
             System.out.println("Usage java io.statx.examples.CountdownOfNumberOfDays " +
-                    "<clientName> <phoneNumber +<CountryCode><state><number>> " +
-                    "<Target Date - YYYY/MM/DD> <Stat Title>");
+                    "<clientName> <phoneNumber +<CountryCode><state><number>> <hemisphere - (N)orthern|(S)southern->");
             System.exit(-1);
         }
         String clientName = args[0];
         String phoneNumber = args[1];
-        DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern("yyyy/MM/dd");
-        DateTime targetDate = dateTimeFormatter.parseDateTime(args[2]);
-        String statTitle = args[3];
+        String hemisphereString = args[2];
+        if (!hemisphereString.equals("N") && !hemisphereString.equals("S")) {
+            System.out.println("Hemisphere should be either N - northern or S - southern");
+            System.exit(-1);
+        }
 
         // Lets sign up through the rest API and get an AuthToken. Once you get the credentials
         // you should save them somewhere safe for use at a later time.
-        UserCredential userCredential = getCredentials(clientName, phoneNumber);
+        PercentageOfSeason.UserCredential userCredential = getCredentials(clientName, phoneNumber);
         ApiClient apiClient = getApiClient(userCredential);
 
         // Repeat once every 24 hours (see parameter below).
@@ -90,24 +91,36 @@ public class CountdownOfNumberOfDays {
             // the stat title as a key to determine whether the stat exists or not. If possible
             // use the statid instead.
             StatsApi statsApi = new StatsApi(apiClient);
+            Season season = Season.get(getCurrentUTCDateTime());
+            if (season == null) {
+                System.out.println("Invalid season");
+                System.exit(-1);
+            }
+            Hemisphere hemisphere = Hemisphere.get(hemisphereString);
+            if (hemisphere == null) {
+                System.out.println("Invalid hemisphere value");
+                System.exit(-1);
+            }
+            String statTitle = String.format(STAT_TITLE_PREFIX, season.getLabel(hemisphere));
             StatList statList = statsApi.getStats(group.getName(), statTitle);
             if ((statList == null) || (statList.getData() == null) || (statList.getData().isEmpty())) {
                 // The stat does not exist. Let's create a number stat.
-                NumberStat numberStat = new NumberStat();
-                numberStat.setTitle(statTitle);
-                numberStat.setVisualType(Stat.VisualTypeEnum.NUMBER);
-                numberStat.setGroupName(groupName);
-                numberStat.setValue(getRemainingDays(targetDate));
-                statsApi.createStat(group.getId(), numberStat);
+                DialerStat dialerStat = new DialerStat();
+                dialerStat.setTitle(statTitle);
+                dialerStat.setVisualType(Stat.VisualTypeEnum.DIALER);
+                dialerStat.setGroupName(groupName);
+                dialerStat.setValue(season.getValue(getCurrentUTCDateTime()));
+                statsApi.createStat(group.getId(), dialerStat);
             } else {
                 // Pick the first stat (should be the only one) and get the statId from it.
                 String statId = statList.getData().get(0).getId();
 
                 // Create the stat to update.
-                NumberStat numberStat = new NumberStat();
-                numberStat.setValue(getRemainingDays(targetDate));
-                numberStat.setLastUpdatedDateTime(new Date(System.currentTimeMillis()));
-                statsApi.updateStat(group.getId(), statId, numberStat);
+                DialerStat dialerStat = new DialerStat();
+                DateTime dateTime = getCurrentUTCDateTime();
+                dialerStat.setValue(season.getValue(dateTime));
+                dialerStat.setLastUpdatedDateTime(new Date(System.currentTimeMillis()));
+                statsApi.updateStat(group.getId(), statId, dialerStat);
             }
 
             System.out.println("Last update at: " + new Date(System.currentTimeMillis()));
@@ -115,9 +128,8 @@ public class CountdownOfNumberOfDays {
         }
     }
 
-    private static String getRemainingDays(DateTime targetDate) {
-        DateTime currentDate = new DateTime(System.currentTimeMillis());
-        return Days.daysBetween(currentDate, targetDate).getDays() + "";
+    private static DateTime getCurrentUTCDateTime() {
+        return new DateTime(System.currentTimeMillis(), DateTimeZone.UTC);
     }
 
     private static ApiClient getApiClient(UserCredential userCredential) {
@@ -187,4 +199,113 @@ public class CountdownOfNumberOfDays {
         }
     }
 
+    // Small enum for the hemisphere.
+    private enum Hemisphere {
+        NORTHERN("N"), SOUTHERN("S");
+
+        private final String value;
+        private static final Map<String, Hemisphere> map = new HashMap<>();
+
+        static {
+            map.put("N", NORTHERN);
+            map.put("S", SOUTHERN);
+        }
+
+        Hemisphere(String value) {
+            this.value = value;
+        }
+
+        static Hemisphere get(String value) {
+            return map.get(value);
+        }
+    }
+
+    // Enum for the Season.
+    private enum Season {
+        SPRING(80, 171, "spring", "fall"),
+        SUMMER(172, 263, "summer", "winter"),
+        FALL(264, 354, "fall", "spring"),
+        // To deal with the year change we break winter
+        // into two enum values.
+        WINTER(355, 365, "winter", "summer"),
+        WINTER2(1, 79, "winter", "summer");
+
+        private final int startDay;
+        private final int endDay;
+        private final String nHemisphereLabel;
+        private final String sHemisphereLabel;
+
+        Season(int startDayOfYear, int endDayOfYear,
+               String nHemisphereLabel, String sHemisphereLabel) {
+            this.startDay = startDayOfYear;
+            this.endDay = endDayOfYear;
+            this.nHemisphereLabel = nHemisphereLabel;
+            this.sHemisphereLabel = sHemisphereLabel;
+        }
+
+        /**
+         * Returns the number of days since the beginning of the season to the given date.
+         *
+         * @param dateTime the given date
+         * @return the number of days since the beginning of the season to the given date or -1 if
+         * date is not within the season.
+         */
+        int daysInTheSeason(DateTime dateTime) {
+            int startDay = this.startDay;
+            int endDay = this.endDay;
+            if (dateTime.year().isLeap()) {
+                startDay++;
+                endDay++;
+            }
+            if ((dateTime.getDayOfYear() < startDay) ||
+                    (dateTime.getDayOfYear() > endDay)) {
+                return -1;
+            }
+            return dateTime.getDayOfYear() - startDay;
+        }
+
+        String getLabel(Hemisphere hemisphere) {
+            return (hemisphere == Hemisphere.NORTHERN) ? nHemisphereLabel : sHemisphereLabel;
+        }
+
+        String getValue(DateTime dateTime) {
+            NumberFormat nf = new DecimalFormat("#0");
+            if ((this == WINTER) || (this == WINTER2)) {
+                if (this == WINTER) {
+                    float result = ((float)daysInTheSeason(dateTime) /
+                            duration(dateTime, this) + duration(dateTime, WINTER2)) * 100;
+                    return nf.format(result);
+                } else {
+                    float result = ((float)(duration(dateTime, WINTER) + daysInTheSeason(dateTime)) /
+                            duration(dateTime, this) + duration(dateTime, WINTER2)) * 100;
+                    return nf.format(result);
+                }
+            } else {
+                float result = ((float) daysInTheSeason(dateTime) / duration(dateTime, this)) * 100;
+                return nf.format(result);
+            }
+        }
+
+        static int duration(DateTime dateTime, Season season) {
+            return (dateTime.year().isLeap())
+                    ? (season.endDay - season.startDay) + 1
+                    : (season.endDay - season.startDay);
+        }
+
+        static Season get(DateTime dateTime) {
+            for (Season season : values()) {
+                int dayOfYear = dateTime.getDayOfYear();
+                int startDay = season.startDay;
+                int endDay = season.endDay;
+                if (dateTime.year().isLeap()) {
+                    startDay++;
+                    endDay++;
+                }
+                if ((dayOfYear >= startDay) && (dayOfYear <= endDay)) {
+                    return season;
+                }
+            }
+            return null;
+        }
+    }
 }
