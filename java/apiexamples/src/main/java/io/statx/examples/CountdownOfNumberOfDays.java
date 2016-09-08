@@ -9,9 +9,7 @@
 
 package io.statx.examples;
 
-import io.statx.rest.ApiClient;
-import io.statx.rest.ApiException;
-import io.statx.rest.api.AuthenticationApi;
+import io.statx.rest.StatXClient;
 import io.statx.rest.api.GroupsApi;
 import io.statx.rest.api.StatsApi;
 import io.statx.rest.model.*;
@@ -21,7 +19,6 @@ import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
 import java.util.Date;
-import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -41,8 +38,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class CountdownOfNumberOfDays {
 
-    private static String STATX_REST_V1_URL_PREFIX = "https://api.statx.io/v1";
-
     public static void main(String[] args) throws Exception {
         if (args.length < 4) {
             System.out.println("Usage java io.statx.examples.CountdownOfNumberOfDays " +
@@ -58,8 +53,8 @@ public class CountdownOfNumberOfDays {
 
         // Lets sign up through the rest API and get an AuthToken. Once you get the credentials
         // you should save them somewhere safe for use at a later time.
-        UserCredential userCredential = getCredentials(clientName, phoneNumber);
-        ApiClient apiClient = getApiClient(userCredential);
+        StatXClient statXClient = new StatXClient();
+        StatXClient.UserCredential userCredential = statXClient.getCredentials(clientName, phoneNumber);
 
         // Repeat once every 24 hours (see parameter below).
         while (true) {
@@ -70,7 +65,7 @@ public class CountdownOfNumberOfDays {
             // name as a key to determine whether the group exists or not. If possible use the
             // groupid instead.
             String groupName = "StatX-API-Examples";
-            GroupsApi groupsApi = new GroupsApi(apiClient);
+            GroupsApi groupsApi = statXClient.getGroupsApi(userCredential);
             GroupList groupList = groupsApi.getGroups(groupName);
             Group group;
             if ((groupList == null) || (groupList.getData() == null) || (groupList.getData().isEmpty())) {
@@ -89,7 +84,7 @@ public class CountdownOfNumberOfDays {
             // Note: The stat title is not unique. In general it is not a good idea to use
             // the stat title as a key to determine whether the stat exists or not. If possible
             // use the statid instead.
-            StatsApi statsApi = new StatsApi(apiClient);
+            StatsApi statsApi = statXClient.getStatsApi(userCredential);
             StatList statList = statsApi.getStats(group.getName(), statTitle);
             if ((statList == null) || (statList.getData() == null) || (statList.getData().isEmpty())) {
                 // The stat does not exist. Let's create a number stat.
@@ -119,72 +114,4 @@ public class CountdownOfNumberOfDays {
         DateTime currentDate = new DateTime(System.currentTimeMillis());
         return Days.daysBetween(currentDate, targetDate).getDays() + "";
     }
-
-    private static ApiClient getApiClient(UserCredential userCredential) {
-        if (userCredential == null) {
-            throw new RuntimeException("Unauthorized access. Please get user credentials first.");
-        }
-        ApiClient apiClient = new ApiClient();
-        apiClient.addDefaultHeader("X-Auth-Token", userCredential.getAuthToken());
-        apiClient.addDefaultHeader("X-API-KEY", userCredential.getApiKey());
-        apiClient.setBasePath(STATX_REST_V1_URL_PREFIX);
-        return apiClient;
-    }
-
-    private static ApiClient getApiClient() {
-        ApiClient apiClient = new ApiClient();
-        apiClient.setBasePath(STATX_REST_V1_URL_PREFIX);
-        return apiClient;
-    }
-
-    private static UserCredential getCredentials(String clientName, String phoneNumber) throws Exception {
-        String clientId = requestVerificationCode(clientName, phoneNumber);
-
-        // Go to the phone where you installed StatX. Select settings > Additional Authorizations.
-        // Find the client with the name given above. Get the verification code an type it here.
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Enter the verification code from your primary device");
-        String verificationCode = Integer.toString(scanner.nextInt());
-        VerificationCodeResponse response = login(clientId, phoneNumber, verificationCode);
-        return new UserCredential(response.getApiKey(), response.getAuthToken());
-    }
-
-    private static String requestVerificationCode(String clientName, String phoneNumber) throws Exception {
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setClientName(clientName);
-        loginRequest.setPhoneNumber(phoneNumber);
-
-        AuthenticationApi authenticationApi = new AuthenticationApi(getApiClient());
-        LoginResponse loginResponse = authenticationApi.login(loginRequest);
-        return loginResponse.getClientId();
-    }
-
-    private static VerificationCodeResponse login(String clientId, String phoneNumber, String verificationCode) throws ApiException {
-        VerificationCodeRequest verificationCodeRequest = new VerificationCodeRequest();
-        verificationCodeRequest.setClientId(clientId);
-        verificationCodeRequest.setPhoneNumber(phoneNumber);
-        verificationCodeRequest.setVerificationCode(verificationCode);
-        AuthenticationApi authenticationApi = new AuthenticationApi(getApiClient());
-        return authenticationApi.verifyCode(verificationCodeRequest);
-    }
-
-    // Small class to provide the user apiKey and authToken.
-    private static class UserCredential {
-        private final String apiKey;
-        private final String authToken;
-
-        UserCredential(String apiKey, String authToken) {
-            this.apiKey = apiKey;
-            this.authToken = authToken;
-        }
-
-        String getAuthToken() {
-            return authToken;
-        }
-
-        String getApiKey() {
-            return apiKey;
-        }
-    }
-
 }
