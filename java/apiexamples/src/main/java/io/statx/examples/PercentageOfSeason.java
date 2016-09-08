@@ -45,7 +45,7 @@ public class PercentageOfSeason {
 
     public static void main(String[] args) throws Exception {
         if (args.length < 3) {
-            System.out.println("Usage java io.statx.examples.CountdownOfNumberOfDays " +
+            System.out.println("Usage java io.statx.examples.PercentageOfSeason " +
                     "<clientName> <phoneNumber +<CountryCode><state><number>> <hemisphere - (N)orthern|(S)southern->");
             System.exit(-1);
         }
@@ -59,13 +59,13 @@ public class PercentageOfSeason {
 
         // Lets sign up through the rest API and get an AuthToken. Once you get the credentials
         // you should save them somewhere safe for use at a later time.
-        PercentageOfSeason.UserCredential userCredential = getCredentials(clientName, phoneNumber);
+        UserCredential userCredential = getCredentials(clientName, phoneNumber);
         ApiClient apiClient = getApiClient(userCredential);
 
         // Repeat once every 24 hours (see parameter below).
         while (true) {
 
-            // Find the group with the countdown stat. If the group does not exist then create it.
+            // Find the group with the dialer stat. If the group does not exist then create it.
             //
             // Note: The group name is not unique. In general it is not a good idea to use the group
             // name as a key to determine whether the group exists or not. If possible use the
