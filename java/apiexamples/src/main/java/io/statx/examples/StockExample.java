@@ -112,7 +112,7 @@ public class StockExample {
 
 
     /**
-     * Fetch 2 stocks from Yahoo finance.
+     * Fetch a few stocks from Yahoo finance.
      * @return a {@code List<HorizontalBarItem} with the details of the stock prices.
      * @throws IOException
      * @throws URISyntaxException
@@ -131,7 +131,8 @@ public class StockExample {
                 .build();
         URIBuilder uriBuilder = new URIBuilder();
         uriBuilder.setScheme("https").setHost("query.yahooapis.com").setPath("/v1/public/yql");
-        uriBuilder.addParameter("q", "select * from yahoo.finance.quotes where symbol in(\"AAPL\",\"GOOGL\")");
+        uriBuilder.addParameter("q", "select * from yahoo.finance.quotes where symbol in(" +
+                "\"AAPL\", \"AMZN\",\"GOOGL\")");
         uriBuilder.addParameter("format","json");
         uriBuilder.addParameter("env", "store://datatables.org/alltableswithkeys");
         URI uri = uriBuilder.build();
