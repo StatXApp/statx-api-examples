@@ -1,0 +1,25 @@
+﻿<Properties StartupItem="StatXAPIConsole/StatXAPIExamples.csproj">
+  <MonoDevelop.Ide.Workbench ActiveDocument="StatXAPIConsole/Program.cs">
+    <Files>
+      <File FileName="StatXAPIConsole/Program.cs" Line="6" Column="26" />
+    </Files>
+    <Pads>
+      <Pad Id="ProjectPad">
+        <State name="__root__">
+          <Node name="StatXAPIExample" expanded="True" selected="True">
+            <Node name="StatXAPIConsole" expanded="True">
+              <Node name="Packages" expanded="True" />
+              <Node name="Properties" expanded="True" />
+            </Node>
+          </Node>
+        </State>
+      </Pad>
+    </Pads>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug|x86" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.ItemProperties.StatXAPIExamples PreferredExecutionTarget="MonoDevelop.Default" />
+</Properties>

@@ -1,0 +1,8 @@
+/Users/jungao/Projects/StatXAPIConsole/StatXAPIConsole/obj/x86/Debug/.NETFramework,Version=v4.5.AssemblyAttribute.cs
+/Users/jungao/Projects/StatXAPIConsole/StatXAPIConsole/bin/Debug/CountdownOfNumberOfDays.exe.mdb
+/Users/jungao/Projects/StatXAPIConsole/StatXAPIConsole/bin/Debug/CountdownOfNumberOfDays.exe
+/Users/jungao/Projects/StatXAPIConsole/StatXAPIConsole/obj/x86/Debug/CountdownOfNumberOfDays.exe
+/Users/jungao/Projects/StatXAPIConsole/StatXAPIConsole/obj/x86/Debug/CountdownOfNumberOfDays.exe.mdb
+/Users/jungao/Projects/StatXAPIConsole/StatXAPIConsole/bin/Debug/IO.StatX.dll
+/Users/jungao/Projects/StatXAPIConsole/StatXAPIConsole/bin/Debug/Newtonsoft.Json.dll
+/Users/jungao/Projects/StatXAPIConsole/StatXAPIConsole/bin/Debug/RestSharp.dll

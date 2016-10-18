@@ -1,0 +1,8 @@
+/Users/jungao/Projects/StatXAPIConsole/PercentageOfSeason/obj/x86/Debug/.NETFramework,Version=v4.5.AssemblyAttribute.cs
+/Users/jungao/Projects/StatXAPIConsole/PercentageOfSeason/bin/Debug/PercentageOfSeason.exe.mdb
+/Users/jungao/Projects/StatXAPIConsole/PercentageOfSeason/bin/Debug/PercentageOfSeason.exe
+/Users/jungao/Projects/StatXAPIConsole/PercentageOfSeason/obj/x86/Debug/PercentageOfSeason.exe
+/Users/jungao/Projects/StatXAPIConsole/PercentageOfSeason/obj/x86/Debug/PercentageOfSeason.exe.mdb
+/Users/jungao/Projects/StatXAPIConsole/PercentageOfSeason/bin/Debug/RestSharp.dll
+/Users/jungao/Projects/StatXAPIConsole/PercentageOfSeason/bin/Debug/Newtonsoft.Json.dll
+/Users/jungao/Projects/StatXAPIConsole/PercentageOfSeason/bin/Debug/IO.StatX.dll
