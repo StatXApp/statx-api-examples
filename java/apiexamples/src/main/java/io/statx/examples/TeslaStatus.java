@@ -52,7 +52,8 @@ import java.util.concurrent.TimeUnit;
  *
  * It will keep updating the stats in the StatX app every 15 minutes.
  *
- *
+ * The TESLA REST API is unofficial and unsupported by Tesla.
+ * 
  * The TESLA REST API code in this example is based on the documentation in the following site:
  * http://docs.timdorr.apiary.io/#reference/vehicles/state-and-settings/charge-state
  */
