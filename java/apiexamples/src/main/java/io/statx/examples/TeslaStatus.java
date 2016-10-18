@@ -1,6 +1,16 @@
+/**
+ * Copyright 2016 StatX Inc.
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for
+ * the specific language governing permissions and limitations under the License.
+ */
+
 package io.statx.examples;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.statx.rest.ApiException;
 import io.statx.rest.StatXClient;
@@ -24,16 +34,13 @@ import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Sample code that shows how to create/update stats for your EV car.
  *
- * Prerequisite: Buy or borrow an EV car of "certain" brand.
+ * Prerequisite: Buy or borrow a Tesla.
  *               Download and install the StatX app
  *               from the AppStore (iOS) or PlayStore (Android).
  *
@@ -45,8 +52,11 @@ import java.util.concurrent.TimeUnit;
  *
  * It will keep updating the stats in the StatX app every 15 minutes.
  *
+ *
+ * The TESLA REST API code in this example is based on the documentation in the following site:
+ * http://docs.timdorr.apiary.io/#reference/vehicles/state-and-settings/charge-state
  */
-public class EVStatus {
+public class TeslaStatus {
     // These two are taken from the following site:
     // http://docs.timdorr.apiary.io/#reference/vehicles/state-and-settings/charge-state
     private static final String CLIENT_ID_FOR_TESLA_MOTORS =
@@ -56,25 +66,27 @@ public class EVStatus {
 
     private static final HttpClient httpClient = getHttpClient();
     private static final String GRANT_TYPE_PASSWORD = "password";
-    private static final String GROUP_NAME = "EV Status";
+    private static final String GROUP_NAME = "Tesla Status";
     private static final String BATTERY_LEVEL_STAT_TITLE = "Battery Level";
     private static final String BATTERY_RANGE_STAT_TITLE = "Range";
     private static final String BATTERY_CHARGING_STAT_TITLE = "Charging State";
 
     private static final StatXClient statXClient = new StatXClient();
+    public static final String SCHEME = "https";
+    public static final String OWNER_API_TESLAMOTORS_COM = "owner-api.teslamotors.com";
 
     // After you downloaded and installed the StatX app use the GetUserCredentials sample code to get
     // your API_KEY and AUTH_TOKEN for the StatX REST API. Set those credentials here.
     private StatXClient.UserCredential userCredential =
-            new StatXClient.UserCredential("<YOUR_API_KEY>", "<YOUR_AUTH_TOKEN>");
+            new StatXClient.UserCredential("<StatXAPIKey>", "<StatXAuthToken>");
 
     public static void main (String args[]) throws Exception {
-        EVStatus EVStatus = new EVStatus();
-        fromCli(EVStatus);
+        TeslaStatus TeslaStatus = new TeslaStatus();
+        fromCli(TeslaStatus);
     }
 
     // Reads parameters from standard input. Masks the password.
-    private static void fromCli(EVStatus EVStatus) throws Exception {
+    private static void fromCli(TeslaStatus TeslaStatus) throws Exception {
         Scanner scanner = new Scanner(System.in);
         System.out.println("Enter the db user email");
         String userEmail = scanner.next();
@@ -84,7 +96,7 @@ public class EVStatus {
         if ((console = System.console()) != null &&
                 (passwd = console.readPassword("[%s]", "Password:")) != null) {
             String dbPwd = new String(passwd);
-            EVStatus.update(userEmail, dbPwd);
+            TeslaStatus.update(userEmail, dbPwd);
             java.util.Arrays.fill(passwd, ' ');
         }
     }
@@ -98,8 +110,6 @@ public class EVStatus {
             String vehicleId = getVehicleId(authToken);
             if (!vehicleId.isEmpty()) {
                 while (true) {
-
-
                     GroupsApi groupsApi = statXClient.getGroupsApi(userCredential);
                     GroupList groupList = groupsApi.getGroups(GROUP_NAME);
                     Group group;
@@ -116,83 +126,13 @@ public class EVStatus {
 
                     BatteryDetails batteryDetails = getVehicleChargeState(authToken, vehicleId);
                     if (batteryDetails != null) {
+                        // Update the 3 stats.
+                        updateBatteryLevel(statsApi, group, batteryDetails.getBatteryLevel());
 
-                        // Find the stats by name. If the stat does not exist then create it.
-                        //
-                        // Note: The stat title is not unique. In general it is not a good idea to use
-                        // the stat title as a key to determine whether the stat exists or not. If possible
-                        // use the statid instead.
+                        updateBatteryRange(statsApi, group, batteryDetails.getBatteryRange(),
+                                batteryDetails.getIdealBatteryRange());
 
-                        StatList statList = statsApi.getStats(group.getName(), BATTERY_LEVEL_STAT_TITLE);
-                        if ((statList == null) || (statList.getData() == null) || (statList.getData().isEmpty())) {
-                            // The stat does not exist. Let's create it.
-                            DialerStat dialerStat = new DialerStat();
-                            dialerStat.setTitle(BATTERY_LEVEL_STAT_TITLE);
-                            dialerStat.setVisualType(Stat.VisualTypeEnum.DIALER);
-                            dialerStat.setGroupName(GROUP_NAME);
-                            dialerStat.setValue(batteryDetails.getBatteryLevel());
-                            statsApi.createStat(group.getId(), dialerStat);
-                        } else {
-                            // Pick the first stat (should be the only one) and get the statId from it.
-                            String statId = statList.getData().get(0).getId();
-
-                            // Update the stat value.
-                            DialerStat dialerStat = new DialerStat();
-                            dialerStat.setValue(batteryDetails.getBatteryLevel());
-                            dialerStat.setLastUpdatedDateTime(new Date(System.currentTimeMillis()));
-                            statsApi.updateStat(group.getId(), statId, dialerStat);
-                        }
-
-                        statList = statsApi.getStats(group.getName(), BATTERY_RANGE_STAT_TITLE);
-                        if ((statList == null) || (statList.getData() == null) || (statList.getData().isEmpty())) {
-                            // The stat does not exist. Let's create it.
-                            RangeStat rangeStat = new RangeStat();
-                            rangeStat.setTitle(BATTERY_RANGE_STAT_TITLE);
-                            rangeStat.setVisualType(Stat.VisualTypeEnum.RANGE);
-                            rangeStat.setGroupName(GROUP_NAME);
-                            rangeStat.setMinValue("0");
-                            rangeStat.setMaxValue(batteryDetails.getIdealBatteryRange());
-                            rangeStat.setValue(batteryDetails.getBatteryRange());
-                            statsApi.createStat(group.getId(), rangeStat);
-                        } else {
-                            // Pick the first stat (should be the only one) and get the statId from it.
-                            String statId = statList.getData().get(0).getId();
-
-                            // Update the stat value.
-                            RangeStat rangeStat = new RangeStat();
-                            rangeStat.setValue(batteryDetails.getBatteryRange());
-                            rangeStat.setLastUpdatedDateTime(new Date(System.currentTimeMillis()));
-                            statsApi.updateStat(group.getId(), statId, rangeStat);
-                        }
-
-                        statList = statsApi.getStats(group.getName(), BATTERY_CHARGING_STAT_TITLE);
-                        if ((statList == null) || (statList.getData() == null) || (statList.getData().isEmpty())) {
-                            // The stat does not exist. Let's create it.
-                            PicklistStat picklistStat = new PicklistStat();
-                            picklistStat.setTitle(BATTERY_CHARGING_STAT_TITLE);
-                            picklistStat.setLabel("");
-                            picklistStat.setVisualType(Stat.VisualTypeEnum.PICK_LIST);
-                            picklistStat.setGroupName(GROUP_NAME);
-                            picklistStat.setItems(getPicklistItems());
-                            String chargingState = batteryDetails.getChargingState();
-                            if ((chargingState != null) && !chargingState.isEmpty()) {
-                                picklistStat.setCurrentIndex(getPicklistIndex(batteryDetails.getChargingState()));
-                            }
-                            statsApi.createStat(group.getId(), picklistStat);
-                        } else {
-                            // Pick the first stat (should be the only one) and get the statId from it.
-                            String statId = statList.getData().get(0).getId();
-
-                            // Update the stat value.
-                            PicklistStat picklistStat = new PicklistStat();
-                            String chargingState = batteryDetails.getChargingState();
-                            if ((chargingState != null) && !chargingState.isEmpty()) {
-                                picklistStat.setItems(getPicklistItems());
-                                picklistStat.setCurrentIndex(getPicklistIndex(batteryDetails.getChargingState()));
-                                picklistStat.setLastUpdatedDateTime(new Date(System.currentTimeMillis()));
-                                statsApi.updateStat(group.getId(), statId, picklistStat);
-                            }
-                        }
+                        updateBatteryChargingState(statsApi, group, batteryDetails.getChargingState());
                     }
                     System.out.println("Last update at: " + new Date(System.currentTimeMillis()));
                     // Update the stats every 15 minutes.
@@ -202,13 +142,100 @@ public class EVStatus {
         }
     }
 
+    private void updateBatteryLevel(StatsApi statsApi, Group group, String batteryLevel)
+            throws ApiException {
+        StatList statList = statsApi.getStats(group.getName(), BATTERY_LEVEL_STAT_TITLE);
+        if (batteryLevel != null) {
+            if ((statList == null) || (statList.getData() == null) || (statList.getData().isEmpty())) {
+                // The stat does not exist. Let's create it.
+                DialerStat dialerStat = new DialerStat();
+                dialerStat.setTitle(BATTERY_LEVEL_STAT_TITLE);
+                dialerStat.setVisualType(Stat.VisualTypeEnum.DIALER);
+                dialerStat.setGroupName(GROUP_NAME);
+                dialerStat.setValue(batteryLevel);
+                statsApi.createStat(group.getId(), dialerStat);
+            } else {
+                // Pick the first stat (should be the only one) and get the statId from it.
+                String statId = statList.getData().get(0).getId();
+
+                // Update the stat value.
+                DialerStat dialerStat = new DialerStat();
+                dialerStat.setValue(batteryLevel);
+                dialerStat.setLastUpdatedDateTime(new Date(System.currentTimeMillis()));
+                statsApi.updateStat(group.getId(), statId, dialerStat);
+            }
+        }
+    }
+
+    private void updateBatteryRange(StatsApi statsApi, Group group,
+                                    String batteryRange, String idealBatteryRange)
+            throws ApiException {
+        StatList statList = statsApi.getStats(group.getName(), BATTERY_RANGE_STAT_TITLE);
+        if (batteryRange != null) {
+            if ((statList == null) || (statList.getData() == null) || (statList.getData().isEmpty())) {
+                // The stat does not exist. Let's create it.
+                RangeStat rangeStat = new RangeStat();
+                rangeStat.setTitle(BATTERY_RANGE_STAT_TITLE);
+                rangeStat.setVisualType(Stat.VisualTypeEnum.RANGE);
+                rangeStat.setGroupName(GROUP_NAME);
+                rangeStat.setMinValue("0");
+                if (idealBatteryRange != null) {
+                    rangeStat.setMaxValue(idealBatteryRange);
+                }
+                rangeStat.setValue(batteryRange);
+                statsApi.createStat(group.getId(), rangeStat);
+            } else {
+                // Pick the first stat (should be the only one) and get the statId from it.
+                String statId = statList.getData().get(0).getId();
+
+                // Update the stat value.
+                RangeStat rangeStat = new RangeStat();
+                rangeStat.setValue(batteryRange);
+                rangeStat.setLastUpdatedDateTime(new Date(System.currentTimeMillis()));
+                statsApi.updateStat(group.getId(), statId, rangeStat);
+            }
+        }
+    }
+
+    private void updateBatteryChargingState(StatsApi statsApi, Group group, String chargingState)
+            throws ApiException {
+        StatList statList = statsApi.getStats(group.getName(), BATTERY_CHARGING_STAT_TITLE);
+        if (chargingState != null) {
+            if ((statList == null) || (statList.getData() == null) || (statList.getData().isEmpty())) {
+                // The stat does not exist. Let's create it.
+                PicklistStat picklistStat = new PicklistStat();
+                picklistStat.setTitle(BATTERY_CHARGING_STAT_TITLE);
+                picklistStat.setLabel("");
+                picklistStat.setVisualType(Stat.VisualTypeEnum.PICK_LIST);
+                picklistStat.setGroupName(GROUP_NAME);
+                picklistStat.setItems(getPicklistItems());
+                picklistStat.setCurrentIndex(getPicklistIndex(chargingState));
+                statsApi.createStat(group.getId(), picklistStat);
+            } else {
+                // Pick the first stat (should be the only one) and get the statId from it.
+                String statId = statList.getData().get(0).getId();
+
+                // Update the stat value.
+                PicklistStat picklistStat = new PicklistStat();
+                picklistStat.setItems(getPicklistItems());
+                picklistStat.setCurrentIndex(getPicklistIndex(chargingState));
+                picklistStat.setLastUpdatedDateTime(new Date(System.currentTimeMillis()));
+                statsApi.updateStat(group.getId(), statId, picklistStat);
+            }
+        }
+    }
+
     private int getPicklistIndex(String state) {
-        switch (state) {
-            case "Not Charging":
+        BatteryState batteryState = BatteryState.get(state);
+        if (batteryState == null) {
+            return 0; // Unknown
+        }
+        switch (batteryState) {
+            case DISCONNECTED:
                 return 1;
-            case "Charging":
+            case CHARGING:
                 return 2;
-            case "Complete":
+            case COMPLETE:
                 return 3;
             default:
                 // Unknown
@@ -219,22 +246,22 @@ public class EVStatus {
     private List<PicklistItem> getPicklistItems() {
         List<PicklistItem> results = new ArrayList<>();
         PicklistItem picklistItem = new PicklistItem();
-        picklistItem.setName("Unknown");
+        picklistItem.setName(BatteryState.UNKNOWN.getLabel());
         picklistItem.setColor(PicklistItem.ColorEnum.GRAY);
         results.add(picklistItem);
 
         picklistItem = new PicklistItem();
-        picklistItem.setName("Not Charging");
+        picklistItem.setName(BatteryState.DISCONNECTED.getLabel());
         picklistItem.setColor(PicklistItem.ColorEnum.RED);
         results.add(picklistItem);
 
         picklistItem = new PicklistItem();
-        picklistItem.setName("Charging");
+        picklistItem.setName(BatteryState.CHARGING.getLabel());
         picklistItem.setColor(PicklistItem.ColorEnum.ORANGE);
         results.add(picklistItem);
 
         picklistItem = new PicklistItem();
-        picklistItem.setName("Complete");
+        picklistItem.setName(BatteryState.COMPLETE.getLabel());
         picklistItem.setColor(PicklistItem.ColorEnum.GREEN);
         results.add(picklistItem);
         return results;
@@ -245,8 +272,8 @@ public class EVStatus {
             throws URISyntaxException, IOException {
         URIBuilder uriBuilder = new URIBuilder();
         uriBuilder
-                .setScheme("https")
-                .setHost("owner-api.teslamotors.com")
+                .setScheme(SCHEME)
+                .setHost(OWNER_API_TESLAMOTORS_COM)
                 .setPath("/oauth/token")
                 .addParameter("client_id", clientId)
                 .addParameter("client_secret", clientSecret)
@@ -272,8 +299,8 @@ public class EVStatus {
             throws URISyntaxException, IOException {
         URIBuilder uriBuilder = new URIBuilder();
         uriBuilder
-                .setScheme("https")
-                .setHost("owner-api.teslamotors.com")
+                .setScheme(SCHEME)
+                .setHost(OWNER_API_TESLAMOTORS_COM)
                 .setPath("/api/1/vehicles");
         String result = "";
         HttpResponse httpResponse = executeGetRequest(uriBuilder, authToken);
@@ -282,8 +309,10 @@ public class EVStatus {
                 Gson gson = new Gson();
                 JsonObject job = gson.fromJson(
                         new InputStreamReader(httpResponse.getEntity().getContent()), JsonObject.class);
-                // For now we pick the first vehicle in the array.
-                result = job.getAsJsonArray("response").get(0).getAsJsonObject().get("id").getAsString();
+                if (job != null) {
+                    // For now we pick the first vehicle in the array.
+                    result = job.getAsJsonArray("response").get(0).getAsJsonObject().get("id").getAsString();
+                }
             }
             return result;
         } finally {
@@ -295,8 +324,8 @@ public class EVStatus {
             throws URISyntaxException, IOException {
         URIBuilder uriBuilder = new URIBuilder();
         uriBuilder
-                .setScheme("https")
-                .setHost("owner-api.teslamotors.com")
+                .setScheme(SCHEME)
+                .setHost(OWNER_API_TESLAMOTORS_COM)
                 .setPath(String.format("/api/1/vehicles/%s/data_request/charge_state", vehicleId));
 
         BatteryDetails batteryDetails = null;
@@ -307,16 +336,21 @@ public class EVStatus {
                 JsonObject job = gson.fromJson(
                         new InputStreamReader(httpResponse.getEntity().getContent()), JsonObject.class);
                 JsonObject response = job.getAsJsonObject("response");
-                String batteryLevel = response.get("battery_level").getAsString();
-                String batteryRange = response.get("battery_range").getAsString();
-                String idealBatteryRange = response.get("ideal_battery_range").getAsString();
-                String chargingState = response.get("charging_state").getAsString();
+                String batteryLevel = getElementValue(response, "battery_level");
+                String batteryRange = getElementValue(response, "battery_range");
+                String idealBatteryRange = getElementValue(response, "ideal_battery_range");
+                String chargingState = getElementValue(response, "charging_state");
                 batteryDetails = new BatteryDetails(batteryLevel, batteryRange, idealBatteryRange, chargingState);
             }
             return batteryDetails;
         } finally {
             closeResponse(httpResponse);
         }
+    }
+
+    private String getElementValue(JsonObject response, String element) {
+        JsonElement jsonElement = response.get(element);
+        return jsonElement.isJsonNull() ? null : jsonElement.getAsString();
     }
 
     private void closeResponse(HttpResponse httpResponse) {
@@ -418,4 +452,30 @@ public class EVStatus {
         }
     }
 
+    private enum BatteryState {
+        DISCONNECTED("Disconnected"), CHARGING("Charging"),
+        COMPLETE("Complete"), UNKNOWN("Unknown");
+
+        private final String label;
+        private static final Map<String, BatteryState> labelToEnum = new HashMap<>();
+
+        static {
+            labelToEnum.put(DISCONNECTED.getLabel(), DISCONNECTED);
+            labelToEnum.put(CHARGING.getLabel(), CHARGING);
+            labelToEnum.put(COMPLETE.getLabel(), COMPLETE);
+            labelToEnum.put(UNKNOWN.getLabel(), UNKNOWN);
+        }
+
+        BatteryState(String label) {
+            this.label = label;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        static BatteryState get(String label) {
+            return labelToEnum.get(label);
+        }
+    }
 }
