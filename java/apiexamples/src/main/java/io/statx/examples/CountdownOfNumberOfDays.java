@@ -92,7 +92,7 @@ public class CountdownOfNumberOfDays {
                 numberStat.setTitle(statTitle);
                 numberStat.setVisualType(Stat.VisualTypeEnum.NUMBER);
                 numberStat.setGroupName(groupName);
-                numberStat.setValue(getRemainingDays(targetDate));
+                numberStat.rawValue(getRemainingDays(targetDate));
                 statsApi.createStat(group.getId(), numberStat);
             } else {
                 // Pick the first stat (should be the only one) and get the statId from it.
@@ -100,7 +100,7 @@ public class CountdownOfNumberOfDays {
 
                 // Create the stat to update.
                 NumberStat numberStat = new NumberStat();
-                numberStat.setValue(getRemainingDays(targetDate));
+                numberStat.rawValue(getRemainingDays(targetDate));
                 numberStat.setLastUpdatedDateTime(new Date(System.currentTimeMillis()));
                 statsApi.updateStat(group.getId(), statId, numberStat);
             }
@@ -110,8 +110,8 @@ public class CountdownOfNumberOfDays {
         }
     }
 
-    private static String getRemainingDays(DateTime targetDate) {
+    private static double getRemainingDays(DateTime targetDate) {
         DateTime currentDate = new DateTime(System.currentTimeMillis());
-        return Days.daysBetween(currentDate, targetDate).getDays() + "";
+        return Days.daysBetween(currentDate, targetDate).getDays();
     }
 }

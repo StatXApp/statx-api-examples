@@ -149,7 +149,7 @@ public class StockExample {
                 JsonElement jsonElement = jsonArray.get(i);
                 HorizontalBarItem horizontalBarItem = new HorizontalBarItem();
                 horizontalBarItem.setName(((JsonObject) jsonElement).get("symbol").getAsString());
-                horizontalBarItem.setValue(((JsonObject) jsonElement).get("Ask").getAsString());
+                horizontalBarItem.setRawValue(((JsonObject) jsonElement).get("Ask").getAsDouble());
                 colorIndex = i % HorizontalBarItem.ColorEnum.values().length;
                 horizontalBarItem.setColor(HorizontalBarItem.ColorEnum.values()[colorIndex]);
                 results.add(horizontalBarItem);
