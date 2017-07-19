@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
  * The class updates a number stat with the countdown of the number of days
  * from the current date to a given target date.
  *
- * Prerequisite: Download the app from the appstore (IOS) or playstore (android) and sign up.
+ * Prerequisite: Download the StatX app from the appstore (IOS) or playstore (android) and sign up.
  *
  * Build it with maven with:
  * mvn clean compile
