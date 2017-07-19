@@ -17,6 +17,9 @@ compile with: **mvn compile**
 
 run with: **mvn exec:java -Dexec.mainClass="io.statx.examples.StockExample"**
 
+## Documentation
+The javadoc of the api is available in the html directory. 
+
 # CSharp Code
 
 ## Installation
