@@ -37,6 +37,19 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Example to show how to create/update a horizontal bars stat through the StatX REST API.
+ *
+ * Prerequisite: Download the StatX app from the appstore (IOS) or playstore (android) and sign up.
+ *
+ * Build it with maven with:
+ * mvn clean compile
+ *
+ * Call it with maven with:
+ *  mvn exec:java -Dexec.mainClass="io.statx.examples.StockExample" -Dexec.args="
+ *  <ClientName> <Phone Number in international format> <Stat Title> <Update Frequency in Minutes>"
+ *
+ * For instance:
+ * mvn exec:java -Dexec.mainClass="io.statx.examples.StockExample" -Dexec.args="
+ * testclient +16509999999 StockExample 2"
  */
 public class StockExample {
 
